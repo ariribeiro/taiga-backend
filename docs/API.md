@@ -2,7 +2,7 @@
 
 Todas as respostas são JSON. Rotas autenticadas exigem `Authorization: Bearer <sid>` (o `sid` vem do login). Se `INTERNAL_API_KEY` estiver definida, todas (exceto `/healthz` e `/readyz`) exigem também `x-api-key`.
 
-**Códigos de erro** (`{"error": "..."}`): `API_KEY` 401 · `UNAUTHENTICATED` 401 · `BAD_REQUEST` 400 · `FORBIDDEN` 403 (sem o papel no projeto) · `NOT_FOUND` 404 · `CRED` 401 · `LIMITE` 429 (`retryAfterMinutes`) · `TIMEOUT` 504 · `UPSTREAM` 502 · `REDE` / `CERT` 502 · `CONFIG` / `SERVICE_AUTH` 503 · `INTERNAL` 500.
+**Códigos de erro** (`{"error": "..."}`): `API_KEY` 401 · `UNAUTHENTICATED` 401 · `BAD_REQUEST` 400 · `FORBIDDEN` 403 (projeto fora da lista do usuário de serviço) · `NOT_FOUND` 404 · `CRED` 401 · `LIMITE` 429 (`retryAfterMinutes`) · `TIMEOUT` 504 · `UPSTREAM` 502 · `REDE` / `CERT` 502 · `CONFIG` / `SERVICE_AUTH` 503 · `INTERNAL` 500.
 
 ## POST /auth/login
 Corpo: `{"username": "...", "password": "..."}`. Cabeçalho opcional `Authorization: Bearer <sid anterior>` encerra a sessão antiga do mesmo navegador. `X-Forwarded-For` só vale com `TRUST_PROXY=1`.
@@ -20,15 +20,16 @@ Scrum:
 ```json
 { "kind": "scrum", "project": {}, "sorted": [ /* milestones, mais recente primeiro */ ],
   "sprint": { "id", "name", "estimated_start", "estimated_finish", "closed" },
+  "scrumMasters": [ { "name", "photo" } ],   // membros ativos com o papel "Scrum Master" (vazio se não houver)
   "devs": [ /* DevView */ ], "overview": { /* SprintOverview */ }, "unassigned": { "stories": [], "tasks": [] },
   "stats": { "days": [ { "day", "name", "open_points", "optimal_points" } ] } | null,
   "pace": { "state": "closed|ahead|late|ok", "diff": 0 },
   "meta": { "webBase": "", "roles": ["..."] , "blockedPattern": "", "paceTolerance": 10, "staleDays": 7 } }
 ```
-Com `sprint: null` o projeto não tem sprints (sem `devs`/`overview`). Projeto Kanban: `{ "kind": "kanban", "project": {} }` → o front chama `/projects/:id/kanban`.
+Com `sprint: null` o projeto não tem sprints (sem `devs`/`overview`, mas com `scrumMasters`). Projeto Kanban: `{ "kind": "kanban", "project": {} }` → o front chama `/projects/:id/kanban`.
 
 ## GET /projects/:id/kanban?days=14|28|56|84
-`{ project, days, board: KStatus[], doneTotal, fetched, ordered, partial, metrics: KanbanMetrics, meta }`
+`{ project, days, board: KStatus[], doneTotal, fetched, ordered, partial, scrumMasters: [ { name, photo } ], metrics: KanbanMetrics, meta }`
 
 ## GET /items?kind=us|task&id=&project=
 `ItemDetail` (veja `src/domain/item.ts`). 404 se o item não for do projeto informado.

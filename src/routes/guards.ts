@@ -21,12 +21,12 @@ export function requireSession(req: FastifyRequest, reply: FastifyReply): Sessio
 export const toId = (v: string | undefined) => (/^\d{1,9}$/.test(v ?? "") ? Number(v) : null);
 
 /**
- * Valida o id do projeto e o papel da pessoa nele. Devolve o id, ou null depois de responder 400/403.
- * O usuário de serviço enxerga mais do que cada pessoa: TODA rota que receba um projeto deve passar por aqui.
+ * Valida o id do projeto e confere que ele é um dos projetos do usuário de serviço. Devolve o id, ou null depois de responder 400/403.
+ * O usuário de serviço pode enxergar projetos públicos que não devem aparecer no painel: TODA rota que receba um projeto deve passar por aqui.
  */
-export async function guardProject(reply: FastifyReply, s: Session, raw: string | undefined): Promise<number | null> {
+export async function guardProject(reply: FastifyReply, raw: string | undefined): Promise<number | null> {
   const pid = toId(raw);
   if (pid == null) { reply.code(400).send({ error: "BAD_REQUEST" }); return null; }
-  if (!(await hasProjectAccess(s.userId, pid))) { reply.code(403).send({ error: "FORBIDDEN" }); return null; }
+  if (!(await hasProjectAccess(pid))) { reply.code(403).send({ error: "FORBIDDEN" }); return null; }
   return pid;
 }

@@ -7,8 +7,8 @@ afterAll(async () => { await s.stop(); });
 
 const json = async (url: string) => (await get(s.app, url, sid)).json();
 
-describe("projetos e controle de acesso (papel Servidor Dirti/Fiscal)", () => {
-  it("lista os projetos em que a pessoa tem o papel", async () => {
+describe("projetos e controle de acesso (projetos do usuário de serviço)", () => {
+  it("lista os projetos de que o usuário de serviço é membro, para qualquer pessoa autenticada", async () => {
     const r = await get(s.app, "/projects", sid);
     expect(r.statusCode).toBe(200);
     const { projects } = r.json() as { projects: { name: string }[] };
@@ -20,7 +20,7 @@ describe("projetos e controle de acesso (papel Servidor Dirti/Fiscal)", () => {
     expect((await json("/projects?cache=1")).projects).toHaveLength(10);
   });
 
-  it("projeto em que a pessoa não é Servidor/Fiscal: 403 em sprint, kanban e itens", async () => {
+  it("projeto de que o usuário de serviço não é membro (mesmo legível no Taiga): 403 em sprint, kanban e itens", async () => {
     for (const url of ["/projects/77/sprint", "/projects/77/kanban", "/items?kind=us&id=1&project=77"])
       expect((await get(s.app, url, sid)).statusCode, url).toBe(403);
     expect((await get(s.app, "/projects/1/sprint", sid)).statusCode).toBe(200);
@@ -48,6 +48,12 @@ describe("sprint (Scrum)", () => {
     expect(d.meta).toMatchObject({ webBase: "https://taiga.exemplo.com", paceTolerance: 10, staleDays: 7 });
     expect(d.meta.roles).toContain("Desenvolvedor");
     expect(d).not.toHaveProperty("members");                       // dados brutos de membros não vazam
+  });
+
+  it("informa o Scrum Master (só ativo, com nome e foto) e ele não vira card de dev", async () => {
+    const d = await json("/projects/1/sprint");
+    expect(d.scrumMasters).toEqual([{ name: "Marina Alves", photo: null }]);
+    expect(d.devs.map((x: { name: string }) => x.name)).not.toContain("Marina Alves");
   });
 
   it("sem ?stats=1 não busca o burndown", async () => {
@@ -90,6 +96,10 @@ describe("Kanban", () => {
     expect(outro.project.id).toBe(1);
     expect((await json("/projects/10/kanban")).doneTotal).toBe(300);            // continua certo, agora vindo do cache
     expect([...(globalThis as unknown as { __kanbanDone: Map<string, unknown> }).__kanbanDone.keys()].sort()).toEqual(["1", "10"]);
+  });
+
+  it("informa o Scrum Master também na visão de fluxo", async () => {
+    expect((await json("/projects/10/kanban")).scrumMasters).toEqual([{ name: "Marina Alves", photo: null }]);
   });
 
   it("o período segue a lista permitida; valor inválido volta ao padrão", async () => {

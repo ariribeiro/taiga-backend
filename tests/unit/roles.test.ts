@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { DEFAULT_ROLES, allowedRoleNames, allowedRoleSet, normRole } from "@/domain/roles";
+import { DEFAULT_ROLES, allowedRoleNames, allowedRoleSet, normRole, scrumMastersOf } from "@/domain/roles";
+import type { TMember } from "@/infra/taiga";
 
 afterEach(() => { delete process.env.DEV_ROLES; });
 
@@ -39,5 +40,25 @@ describe("papéis permitidos", () => {
   it("DEV_ROLES vazio volta ao padrão", () => {
     process.env.DEV_ROLES = "  ";
     expect(allowedRoleNames()).toEqual(DEFAULT_ROLES);
+  });
+});
+
+describe("scrumMastersOf", () => {
+  const m = (role: string, extra: Partial<TMember> = {}): TMember => ({ user: 1, full_name: `Pessoa ${role}`, photo: "http://x/f.png", role_name: role, ...extra });
+  it("acha o papel Scrum Master sem diferenciar maiúsculas, acentos ou plural", () => {
+    const r = scrumMastersOf([m("SCRUM MASTER"), m("Scrum Master", { user: 2 }), m("scrum masters", { user: 3 }), m("Scrum  Máster", { user: 4 })]);
+    expect(r).toHaveLength(4);                     // o acento de "Máster" também é ignorado
+  });
+  it("devolve nome e foto (foto ausente vira null)", () => {
+    expect(scrumMastersOf([m("Scrum Master", { full_name: "Marina", photo: null })])).toEqual([{ name: "Marina", photo: null }]);
+  });
+  it("ignora outros papéis, contas desativadas e convites sem usuário", () => {
+    expect(scrumMastersOf([
+      m("Desenvolvedor"), m("Product Owner", { user: 2 }), m("Scrum Master", { user: 3, is_active: false }),
+      m("Scrum Master", { user: 4, is_user_active: false }), m("Scrum Master", { user: null }),
+    ])).toEqual([]);
+  });
+  it("vários Scrum Masters no mesmo projeto: devolve todos, na ordem do Taiga", () => {
+    expect(scrumMastersOf([m("Scrum Master", { full_name: "A" }), m("Scrum Master", { user: 2, full_name: "B" })]).map((p) => p.name)).toEqual(["A", "B"]);
   });
 });

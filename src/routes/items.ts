@@ -8,7 +8,7 @@ export async function itemRoutes(app: FastifyInstance) {
     const q = req.query as Q;
     const id = toId(q.id);
     if ((q.kind !== "us" && q.kind !== "task") || id == null) return reply.code(400).send({ error: "BAD_REQUEST" });
-    const pid = await guardProject(reply, s, q.project); if (pid == null) return;
+    const pid = await guardProject(reply, q.project); if (pid == null) return;
     try {
       return await loadItem(q.kind, id, pid);
     } catch (e) {

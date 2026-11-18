@@ -1,6 +1,6 @@
-# Visão por Dev — API (back)
+# Farol — Visibilidade Ágil · API (back)
 
-API do **Visão por Dev**. Ela consulta o Taiga com um **usuário de serviço**, aplica as regras de negócio (papéis, métricas de sprint e de Kanban) e entrega ao front os dados **já calculados**. O front (repositório `taiga-dev-view-front`) só desenha a tela.
+API do **Farol**. Ela consulta o Taiga com um **usuário de serviço**, aplica as regras de negócio (papéis, métricas de sprint e de Kanban) e entrega ao front os dados **já calculados**. O front (repositório `taiga-dev-view-front`) só desenha a tela.
 
 ```mermaid
 flowchart LR
@@ -11,7 +11,7 @@ flowchart LR
 
 - A API **não é exposta** fora do cluster (sem `Route`): só o front a alcança.
 - **Pessoas** continuam entrando com usuário e senha do Taiga, mas isso serve **apenas para provar quem são**: o token delas é descartado na hora. Todas as consultas usam o token do usuário de serviço.
-- O que cada pessoa pode ver é decidido **aqui**: só projetos em que ela tem o papel “Servidor Dirti/Fiscal” (veja `isAllowedRole` em `src/infra/taiga.ts`).
+- **Não há filtro por perfil:** toda pessoa autenticada vê os projetos de que o **usuário de serviço é membro**, e só eles. Para incluir ou retirar um projeto do painel, adicione ou remova o usuário de serviço no Taiga (a lista tem cache de 5 min).
 
 ## Usuário de serviço
 

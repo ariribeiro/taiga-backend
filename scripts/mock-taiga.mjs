@@ -13,6 +13,8 @@ const members = [
   // sem nenhuma story/task na sprint:
   { user: 4, full_name: "Eva Rocha", photo: null, role_name: "ANALISTA DE TESTE DE QUALIDADE", is_active: true },
   { user: 5, full_name: "Fabio Inativo", photo: null, role_name: "Arquiteto", is_active: false },   // conta desativada
+  { user: 8, full_name: "Marina Alves", photo: null, role_name: "SCRUM MASTER", is_active: true },
+  { user: 9, full_name: "Sam Inativo", photo: null, role_name: "Scrum Master", is_active: false },   // desativado: não aparece
   { user: 6, full_name: "Gil Semcampo", photo: null, role_name: "ESTAGIÁRIO" },                          // resposta sem o campo is_active
   { user: null, full_name: "convite@pendente.com", photo: null, role_name: "Back", is_active: false }, // convite pendente
 ];
@@ -103,19 +105,14 @@ function handle(req, res) {
   }
   if (req.headers.authorization !== "Bearer tok") return send(res, 401, {});
   const PROJ = ["Projeto Alfa", "Projeto Beta", "Portal do Aluno", "PNLD - Programa Nacional do Livro e do Material Didático: Distribuição e Logística Integrada", "App Mobile", "Data Lake", "Sistema Legado", "Painel Executivo", "Integração MEC", "Quadro Kanban"].map((name, i) => ({ id: i + 1, name, slug: name.toLowerCase().replace(/\W+/g, "-"), description: i === 0 ? "Produto principal" : "", logo_small_url: i === 0 ? `${BASE}/media/logo.svg` : null, is_backlog_activated: i !== 9, is_kanban_activated: true }));
-  if (p === "/projects") return send(res, 200, PROJ);
+  if (p === "/users/me") return send(res, 200, { id: 999, username: "svc-dashboard" });
+  // usuário de serviço: membro de todos os projetos, exceto o 77 (existe e é legível, mas ele não é membro)
+  if (p === "/projects") return send(res, 200, PROJ.filter((x) => x.id !== 77));
   { const pm = p.match(/^\/projects\/(\d+)$/); if (pm) { const pr = PROJ.find((x) => x.id === +pm[1]); return pr ? send(res, 200, pr) : send(res, 404, {}); } }
   if (p === "/users/233") return send(res, 200, { id: 233, username: "paula", full_name_display: "Paula Externa" });
   if (p === "/milestones/10/stats") {
     const total = 16, n = 14, open = [16,16,15,15,13,13,11,11]; // 8 dias já decorridos (hoje = índice 7)
     return send(res, 200, { days: Array.from({ length: n }, (_, i) => ({ day: iso(-7 + i), name: i + 1, open_points: i < 8 ? open[i] : null, optimal_points: Math.round(total * (1 - i / (n - 1)) * 10) / 10 })) });
-  }
-  if (p === "/memberships" && u.searchParams.get("member") === "1") {
-    // vínculos do usuário logado (Ana): Servidor Dirti/Fiscal em todos os projetos, exceto o 77 (só Desenvolvedor)
-    const proj = u.searchParams.get("project");
-    const role = (id) => (id === 77 ? "Desenvolvedor" : id % 2 ? "Servidor Dirti/Fiscal" : "SERVIDOR/DIRTI/FISCALIZAÇÃO");
-    const ids = proj ? [+proj] : PROJ.map((x) => x.id);
-    return send(res, 200, ids.map((id) => ({ project: id, user: 1, role_name: role(id) })));
   }
   if (p === "/memberships") return send(res, 200, members);
   if (p === "/milestones" && u.searchParams.get("project") === "9") return send(res, 200, []); // Scrum ligado, sem sprints

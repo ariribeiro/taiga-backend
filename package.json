@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "API (BFF) do Visão por Dev: consulta o Taiga com um usuário de serviço e entrega os dados já calculados ao front.",
+  "description": "API (BFF) do Farol — Visibilidade Ágil: consulta o Taiga com um usuário de serviço e entrega os dados já calculados ao front.",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env.local src/server.ts",
     "build": "esbuild src/server.ts --bundle --platform=node --target=node22 --format=esm --packages=external --sourcemap --outfile=dist/server.mjs",

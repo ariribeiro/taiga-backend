@@ -1,3 +1,5 @@
+import type { TMember } from "../infra/taiga";
+
 /**
  * Papéis (roles do Taiga) que aparecem como cards na página da sprint.
  * Pode ser trocado em DEV_ROLES (.env.local), separados por vírgula; use DEV_ROLES=* para mostrar todos.
@@ -31,4 +33,14 @@ export function allowedRoleNames(): string[] | null {
 export function allowedRoleSet(): Set<string> | null {
   const names = allowedRoleNames();
   return names ? new Set(names.map(normRole)) : null;
+}
+
+/** Pessoa do time, como o front exibe (foto pode faltar). */
+export type Person = { name: string; photo: string | null };
+
+/** Quem tem o papel "Scrum Master" no projeto (ignora maiúsculas, acentos e plural). Só membros ativos, com conta. */
+export function scrumMastersOf(members: TMember[]): Person[] {
+  return members
+    .filter((m) => m.user && m.is_active !== false && m.is_user_active !== false && normRole(m.role_name ?? "") === "scrum master")
+    .map((m) => ({ name: m.full_name, photo: m.photo ?? null }));
 }

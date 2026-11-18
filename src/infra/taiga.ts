@@ -186,44 +186,33 @@ export type TTask = {
   is_blocked?: boolean; blocked_note?: string;
 };
 
-// Só quem tem este papel NO PROJETO pode ver o projeto. O nome varia entre projetos, então basta o papel
-// conter "servidor", "fiscal" ou "fiscalização" (ignorando maiúsculas e acentos; "fiscal" já cobre "fiscalização").
-export const ALLOWED_ROLE = "Servidor Dirti/Fiscal";
-const plain = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-export function isAllowedRole(role?: string | null): boolean {
-  const t = plain(role ?? "");
-  return ["servidor", "fiscal", "fiscalizacao"].some((w) => t.includes(w));
+// Quem vê o quê: todas as pessoas autenticadas veem os projetos de que o USUÁRIO DE SERVIÇO é membro (e só eles).
+// O acesso de cada projeto é, portanto, definido no Taiga, adicionando/removendo o usuário de serviço como membro.
+const PROJECTS_TTL_MS = 300_000;       // cache da lista (seletor do cabeçalho aparece em toda página)
+const PROJECTS_RECHECK_MS = 30_000;    // projeto fora da lista: só refaz a consulta se a lista tiver mais que isso
+
+/** Projetos de que o usuário de serviço é membro, na ordem dele. */
+export async function getProjects(): Promise<TProject[]> {
+  const me = await taigaGet<{ id: number }>("/users/me");
+  return taigaGet<TProject[]>(`/projects?member=${me.id}&order_by=memberships__user_order`);
 }
 
-export async function getProjects(userId: number): Promise<TProject[]> {
-  const [projects, memberships] = await Promise.all([
-    taigaGet<TProject[]>(`/projects?member=${userId}&order_by=memberships__user_order`),
-    taigaGet<{ project: number; user: number | null; role_name: string }[]>(`/memberships?member=${userId}`),
-  ]);
-  // confere também o usuário: não depende de o Taiga aplicar o filtro ?member=
-  const ok = new Set(memberships.filter((m) => m.user === userId && isAllowedRole(m.role_name)).map((m) => m.project));
-  return projects.filter((p) => ok.has(p.id));
+const projCache = ((globalThis as unknown as { __projCache?: { at: number; data: TProject[] } }).__projCache ??= { at: 0, data: [] });
+const refreshProjects = async () => { const data = await getProjects(); projCache.data = data; projCache.at = Date.now(); return data; };
+
+/** Lista de projetos com cache de 5 min (a mesma para todas as pessoas). */
+export async function getProjectsCached(): Promise<TProject[]> {
+  return Date.now() - projCache.at < PROJECTS_TTL_MS ? projCache.data : refreshProjects();
 }
 
-/** O usuário é Servidor Dirti/Fiscal neste projeto? Usado para bloquear o acesso ao projeto. */
-export async function hasProjectAccess(userId: number, projectId: number): Promise<boolean> {
-  try {
-    // pede só o vínculo do usuário; o filtro local garante o resultado mesmo se o Taiga ignorar ?member=
-    const mine = await taigaGet<TMember[]>(`/memberships?project=${projectId}&member=${userId}`);
-    return mine.some((m) => m.user === userId && isAllowedRole(m.role_name));
-  } catch (e) {
-    if (e instanceof TaigaError && (e.status === 403 || e.status === 404)) return false;
-    throw e;
-  }
-}
-const projCache = ((globalThis as unknown as { __projCache?: Map<number, { at: number; data: TProject[] }> }).__projCache ??= new Map());
-/** Lista de projetos com cache de 5 min — usada no seletor do cabeçalho, que aparece em toda página. */
-export async function getProjectsCached(userId: number): Promise<TProject[]> {
-  const hit = projCache.get(userId);
-  if (hit && Date.now() - hit.at < 300_000) return hit.data;
-  const data = await getProjects(userId);
-  projCache.set(userId, { at: Date.now(), data });
-  return data;
+/**
+ * O projeto está entre os do usuário de serviço? Bloqueia o acesso a projetos públicos do Taiga de que ele não é membro.
+ * Um projeto recém-adicionado aparece sem esperar o cache expirar (refaz a consulta se a lista tiver mais de 30 s).
+ */
+export async function hasProjectAccess(projectId: number): Promise<boolean> {
+  if ((await getProjectsCached()).some((p) => p.id === projectId)) return true;
+  if (Date.now() - projCache.at < PROJECTS_RECHECK_MS) return false;
+  return (await refreshProjects()).some((p) => p.id === projectId);
 }
 export const getProject = (id: number) => taigaGet<TProject>(`/projects/${id}`);
 export const getMembers = (p: number) => taigaGet<TMember[]>(`/memberships?project=${p}`);

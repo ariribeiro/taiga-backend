@@ -11,7 +11,7 @@ export async function loadSprint(pid: number, sprintParam?: string, withStats = 
   if (!milestones.length && project.is_kanban_activated) return { kind: "kanban" as const, project, sorted: [], sprint: null as null };
   const sorted = [...milestones].sort((a, b) => b.estimated_start.localeCompare(a.estimated_start));
   const sprint = milestones.find((m) => String(m.id) === sprintParam) ?? pickCurrentSprint(milestones);
-  if (!sprint) return { kind: "scrum" as const, project, sorted, sprint: null as null };
+  if (!sprint) return { kind: "scrum" as const, project, sorted, sprint: null as null, members };
   const [stories, tasks, stats] = await Promise.all([
     getStories(pid, sprint.id), getTasks(pid, sprint.id),
     // burndown: se o endpoint falhar, a página segue sem o gráfico

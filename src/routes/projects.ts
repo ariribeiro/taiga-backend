@@ -7,6 +7,6 @@ export async function projectRoutes(app: FastifyInstance) {
     const s = requireSession(req, reply); if (!s) return;
     // ?cache=1: lista com cache de 5 min (seletor do cabeçalho, que aparece em toda página)
     const cached = (req.query as Q).cache === "1";
-    return { projects: cached ? await getProjectsCached(s.userId) : await getProjects(s.userId) };
+    return { projects: cached ? await getProjectsCached() : await getProjects() };
   });
 }
