@@ -1,0 +1,29 @@
+{
+  "name": "taiga-dev-view-back",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API (BFF) do Visão por Dev: consulta o Taiga com um usuário de serviço e entrega os dados já calculados ao front.",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env.local src/server.ts",
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node22 --format=esm --packages=external --sourcemap --outfile=dist/server.mjs",
+    "start": "node dist/server.mjs",
+    "mock": "node scripts/mock-taiga.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test": "npm run typecheck && npm run test:unit"
+  },
+  "dependencies": {
+    "fastify": "5.12.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15",
+    "typescript": "5.5.4",
+    "vitest": "5.1.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
